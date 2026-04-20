@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import html2canvas from "html2canvas";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
@@ -9,16 +10,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Sparkles, RotateCcw, Trophy, CheckSquare, Square } from "lucide-react";
-import { skillColor, skillShort, skillLabel } from "../../lib/skills";
+import {
+  Sparkles,
+  RotateCcw,
+  Trophy,
+  CheckSquare,
+  Square,
+  Download,
+} from "lucide-react";
+import { SKILLS, skillColor, skillShort, skillLabel } from "../../lib/skills";
 import { generateTeams } from "../../lib/teamBalancer";
+import { addHistoryEntry, uid } from "../../lib/storage";
 import Confetti from "./Confetti";
 import { toast } from "sonner";
 
-export default function TeamGenerator({ players, onToggleAvailable }) {
-  const [numTeams, setNumTeams] = useState("2");
-  const [teams, setTeams] = useState([]);
+function saveToHistory(teams, numTeams) {
+  const totalPlayers = teams.reduce((a, t) => a + t.players.length, 0);
+  const entry = {
+    id: uid(),
+    timestamp: Date.now(),
+    numTeams,
+    totalPlayers,
+    balanceDiffPct: teams[0]?.balanceDiffPct ?? 0,
+    teams: teams.map((t) => ({
+      name: t.name,
+      total: t.total,
+      avg: t.avg,
+      players: t.players.map((p) => ({
+        name: p.name,
+        rating: p.rating,
+        skill: p.skill,
+      })),
+    })),
+  };
+  addHistoryEntry(entry);
+}
+
+export default function TeamGenerator({
+  players,
+  onToggleAvailable,
+  initialTeams,
+}) {
+  const [numTeams, setNumTeams] = useState(
+    String(initialTeams?.length || 2)
+  );
+  const [teams, setTeams] = useState(initialTeams ?? []);
   const [confetti, setConfetti] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const outputRef = useRef(null);
 
   const availableCount = useMemo(
     () => players.filter((p) => p.available).length,
@@ -36,11 +75,11 @@ export default function TeamGenerator({ players, onToggleAvailable }) {
     }
     const result = generateTeams(pool, n);
     setTeams(result);
+    saveToHistory(result, n);
     setConfetti(true);
     toast.success(
       `Generated ${n} balanced teams (Δ ${result[0]?.balanceDiffPct ?? 0}%)`
     );
-    // scroll to results
     requestAnimationFrame(() => {
       document
         .getElementById("teams-output")
@@ -59,6 +98,33 @@ export default function TeamGenerator({ players, onToggleAvailable }) {
     });
   }
 
+  async function handleDownload() {
+    if (!outputRef.current) return;
+    try {
+      setDownloading(true);
+      // Capture with transparent→solid background so dark-green card stays readable.
+      const canvas = await html2canvas(outputRef.current, {
+        backgroundColor: "#0a2916",
+        scale: 2,
+        useCORS: true,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      const date = new Date().toISOString().split("T")[0];
+      a.href = dataUrl;
+      a.download = `pitch11-teams-${date}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("Teams image downloaded");
+    } catch (err) {
+      toast.error("Could not generate image");
+      console.error(err);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <section
       className="mx-auto w-full max-w-3xl px-4 pb-10 pt-4"
@@ -75,7 +141,7 @@ export default function TeamGenerator({ players, onToggleAvailable }) {
             Generate Teams
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pick availability · split by rating · equalised totals.
+            Pick availability · split by rating · balanced skills.
           </p>
         </div>
       </div>
@@ -207,17 +273,31 @@ export default function TeamGenerator({ players, onToggleAvailable }) {
       {/* Results */}
       {teams.length > 0 && (
         <div id="teams-output" className="mt-8">
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <Trophy className="h-5 w-5 text-[color:var(--brand-gold)]" />
             <h3 className="font-display text-xl">Generated Teams</h3>
             <span
-              className="ml-auto rounded-full bg-[color:var(--brand-gold)]/20 px-3 py-1 text-xs font-semibold text-[color:var(--brand-ink)] dark:text-[color:var(--brand-gold)]"
+              className="rounded-full bg-[color:var(--brand-gold)]/20 px-3 py-1 text-xs font-semibold text-[color:var(--brand-ink)] dark:text-[color:var(--brand-gold)]"
               data-testid="balance-indicator"
             >
               Δ {teams[0]?.balanceDiffPct ?? 0}% diff
             </span>
+            <Button
+              onClick={handleDownload}
+              disabled={downloading}
+              variant="outline"
+              size="sm"
+              className="ml-auto h-8 rounded-lg border-[color:var(--brand-green)]/30 text-[color:var(--brand-green)] hover:bg-[color:var(--brand-green)]/10 hover:text-[color:var(--brand-green)]"
+              data-testid="download-teams-btn"
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {downloading ? "Rendering…" : "Download PNG"}
+            </Button>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div
+            ref={outputRef}
+            className="grid grid-cols-1 gap-4 rounded-2xl bg-transparent p-1 sm:grid-cols-2"
+          >
             {teams.map((t, i) => (
               <div
                 key={t.id}
@@ -247,6 +327,28 @@ export default function TeamGenerator({ players, onToggleAvailable }) {
                       </div>
                     </div>
                   </div>
+
+                  {/* Skill composition pills */}
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {SKILLS.map((s) => {
+                      const count = t.skillCounts?.[s.code] ?? 0;
+                      if (!count) return null;
+                      return (
+                        <span
+                          key={s.code}
+                          className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90"
+                          title={`${count} ${s.label}`}
+                        >
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ background: s.color }}
+                          />
+                          {count}× {s.short}
+                        </span>
+                      );
+                    })}
+                  </div>
+
                   <ul className="mt-4 space-y-1.5">
                     {t.players.map((p) => (
                       <li

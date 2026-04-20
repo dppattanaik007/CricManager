@@ -206,10 +206,10 @@ body {
 .bottom-nav__list {
     pointer-events: auto;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 4px;
     width: 100%;
-    max-width: 440px;
+    max-width: 520px;
     height: auto;
     padding: 6px;
     border-radius: 22px;

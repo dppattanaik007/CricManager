@@ -11,9 +11,10 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../ui/dialog";
-import { Trash2, Pencil, Search, Users2 } from "lucide-react";
+import { Trash2, Pencil, Search, Users2, Upload } from "lucide-react";
 import { SKILLS, skillColor, skillLabel, skillShort } from "../../lib/skills";
 import { toast } from "sonner";
+import ImportCsvDialog from "./ImportCsvDialog";
 
 function RatingBadge({ rating }) {
   return (
@@ -33,10 +34,11 @@ function RatingBadge({ rating }) {
   );
 }
 
-export default function PlayersList({ players, onDelete, onUpdate }) {
+export default function PlayersList({ players, onDelete, onUpdate, onBulkAdd }) {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(null); // player object
   const [draft, setDraft] = useState({ name: "", skill: "allr", rating: 75 });
+  const [importOpen, setImportOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -90,6 +92,16 @@ export default function PlayersList({ players, onDelete, onUpdate }) {
             {players.length} {players.length === 1 ? "player" : "players"} registered
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setImportOpen(true)}
+          className="rounded-lg border-[color:var(--brand-green)]/30 text-[color:var(--brand-green)] hover:bg-[color:var(--brand-green)]/10 hover:text-[color:var(--brand-green)]"
+          data-testid="open-csv-import-btn"
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5" />
+          Import CSV
+        </Button>
       </div>
 
       <div className="relative mb-4">
@@ -271,6 +283,12 @@ export default function PlayersList({ players, onDelete, onUpdate }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportCsvDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImport={(rows) => onBulkAdd(rows)}
+      />
     </section>
   );
 }
