@@ -1,0 +1,19 @@
+/* App-level polish for Cricket Team Manager.
+   Global theme lives in index.css. */
+
+.App {
+    min-height: 100vh;
+}
+
+/* Scrollbar subtle */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--accent));
+}
