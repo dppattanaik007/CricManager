@@ -17,27 +17,33 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Show repo layout (debug)
+        run: |
+          echo "--- root ---"
+          ls -la
+          echo "--- frontend/ ---"
+          ls -la frontend || echo "NO frontend/ folder"
+          echo "--- frontend/yarn.lock? ---"
+          ls -la frontend/yarn.lock 2>/dev/null || echo "yarn.lock missing (ok, will regenerate)"
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
-          cache-dependency-path: frontend/yarn.lock
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        working-directory: frontend
+        run: yarn install --network-timeout 600000
 
       - name: Build
+        working-directory: frontend
         run: yarn build
         env:
-          CI: "false" # CRA treats warnings as errors on CI by default — disable
+          CI: "false"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
