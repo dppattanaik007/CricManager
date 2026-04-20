@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "@/App.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Toaster } from "./components/ui/sonner";
+import { toast } from "sonner";
 import { UserPlus2, Users2, Wand2, History } from "lucide-react";
 
 import Header from "./components/cricket/Header";
@@ -58,6 +59,13 @@ function App() {
 
   function bulkAdd(list) {
     setPlayers((prev) => [...list, ...prev]);
+  }
+
+  function loadSampleData() {
+    const seed = buildSeedPlayers();
+    setPlayers(seed);
+    markSeeded();
+    toast.success("Loaded 20 sample players");
   }
 
   function deletePlayer(id) {
@@ -134,6 +142,7 @@ function App() {
               onDelete={deletePlayer}
               onUpdate={updatePlayer}
               onBulkAdd={bulkAdd}
+              onLoadSeed={loadSampleData}
             />
           </TabsContent>
 

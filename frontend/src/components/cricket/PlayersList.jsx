@@ -34,7 +34,7 @@ function RatingBadge({ rating }) {
   );
 }
 
-export default function PlayersList({ players, onDelete, onUpdate, onBulkAdd }) {
+export default function PlayersList({ players, onDelete, onUpdate, onBulkAdd, onLoadSeed }) {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(null); // player object
   const [draft, setDraft] = useState({ name: "", skill: "allr", rating: 75 });
@@ -126,9 +126,29 @@ export default function PlayersList({ players, onDelete, onUpdate, onBulkAdd }) 
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {players.length === 0
-              ? "Add your first player to get started."
+              ? "Add your first player or load the 20 sample cricketers."
               : "Try a different search."}
           </p>
+          {players.length === 0 && onLoadSeed && (
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Button
+                onClick={onLoadSeed}
+                className="rounded-xl bg-[color:var(--brand-green)] text-white hover:bg-[color:var(--brand-green-2)]"
+                data-testid="load-sample-players-btn"
+              >
+                Load 20 sample players
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setImportOpen(true)}
+                className="rounded-xl"
+                data-testid="empty-import-csv-btn"
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                Import CSV
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3" data-testid="players-grid">
